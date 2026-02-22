@@ -7,9 +7,7 @@
 
 Bilibili Auto Comment - Tampermonkey Script / B站自动评论油猴脚本
 
-https://img.shields.io/github/v/release/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script
-https://img.shields.io/badge/Tampermonkey-Script-blue
-https://img.shields.io/github/license/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script
+
 
 一个功能强大的Tampermonkey用户脚本，用于在Bilibili（B站）实现自动评论。基于网络请求劫持（Hook）技术，支持自定义评论内容、定时发送、随机评论库等高级功能。
 
