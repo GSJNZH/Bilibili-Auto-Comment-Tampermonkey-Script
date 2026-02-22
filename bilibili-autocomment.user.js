@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name        B站自动评论油猴脚本
-// @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script
-// @version      6.2
+// @namespace  https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
+// @version      6.3
 // @description  逐层进入 bili-comment-rich-textarea，修复间隔设置无效的问题
-// @author       YourName
-// @match        https://www.bilibili.com/video/*
-// @match        https://www.bilibili.com/video/BV*
+// @author       GSJNZH
+// @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @license      MIT
+// @icon          https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/70/ab/15/70ab1507-a468-1dc9-ad3b-d4fe7d6f70dd/AppIcon-1x_U007epad-0-0-0-85-220-0.png/434x0w.webp
+// @downloadURL https://raw.githubusercontent.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/refs/heads/main/bilibili-autocomment.user.js
+// @updateURL https://raw.githubusercontent.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/refs/heads/main/bilibili-autocomment.user.js
 // ==/UserScript==
 
 (function() {
@@ -386,5 +388,6 @@
     createUI();
 
 })();
+
 
 
