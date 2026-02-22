@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         B站自动评论 · 精确定位版（修复间隔）
-// @namespace    http://tampermonkey.net/
+// @name        Bilibili-Auto-Comment-Tampermonkey-Script  B站自动评论 · 精确定位版（修复间隔）
+// @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script
 // @version      6.2
 // @description  逐层进入 bili-comment-rich-textarea，修复间隔设置无效的问题
 // @author       YourName
@@ -384,4 +384,5 @@
     }
 
     createUI();
+
 })();
