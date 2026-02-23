@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         B站自动评论 v7.7（多系列·标点限制·新元素扩容）
+// @name         B站自动评论 v7.8（多系列·标点限制·数量调整）
 // @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
-// @version      7.7
-// @description  每次随机选择一个系列的表情包（共7个系列），根据文案长度动态抽取个数，每个标点后最多跟一个表情（最后一个除外），随机分布在开头、标点后、结尾
+// @version      7.8
+// @description  每次随机选择1-2个系列的表情包，根据文案长度动态抽取4-15个，每个标点后最多跟一个表情（最后一个除外），随机分布在开头、标点后、结尾
 // @author       GSJNZH
 // @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
 // @grant        GM_setValue
@@ -16,7 +16,7 @@
 (function() {
     'use strict';
 
-    console.log('🔥 B站自动评论 v7.7 (多系列·标点限制·新元素扩容) 已启动');
+    console.log('🔥 B站自动评论 v7.8 (多系列·标点限制·数量调整) 已启动');
 
     // ---------- 表情包元素按系列分组 ----------
     const SERIES = {
@@ -422,7 +422,7 @@
      * 智能分布表情包（新规则）：
      * - 将 selected 数组中的元素随机分配到三个位置：start（开头）、middle（标点后）、end（结尾）
      * - 每个标点符号（除最后一个外）后面最多跟一个表情包，最后一个标点后面可以跟多个
-     * - 省略号"……"视为一个标点
+     * - 省略号"……"和连续英文点号"..."视为一个标点
      */
     function distributeElements(selected, text) {
         if (selected.length === 0) return { startPart: '', middleMap: new Map(), endPart: '' };
@@ -446,22 +446,12 @@
             else middleElements.push(selected[i]);
         }
 
-        // 3. 找出所有标点符号的位置（包括省略号）
-        // 匹配中文和英文标点，以及省略号……
-        const punctuationRegex = /[，。！？；：,.!?;:]|…+/g;
+        // 3. 找出所有标点符号的位置（包括省略号和连续英文点号）
+        // 匹配中文和英文标点，以及省略号……，以及连续英文点号（至少2个）
+        const punctuationRegex = /[，。！？；：,.!?;:]|…+|\.{2,}/g;
         const matches = [...text.matchAll(punctuationRegex)];
-        // 去重处理：连续省略号视为一个标点，但我们匹配到的已经是单独的匹配项，每个匹配可能包含多个省略号字符
-        // 我们需要的是每个标点符号的位置（索引），并标记最后一个标点
-        const punctuationIndices = [];
-        for (const match of matches) {
-            // 如果匹配到连续的省略号，只记录第一个字符的位置
-            punctuationIndices.push(match.index);
-            // 对于连续省略号，跳过后续字符避免重复
-            if (match[0].startsWith('…')) {
-                // match[0] 可能包含多个省略号，我们只记录一个位置，后面的字符自动跳过
-                // 但正则匹配会匹配整个省略号序列，index指向第一个字符，因此已经正确
-            }
-        }
+        // 记录每个标点的起始索引
+        const punctuationIndices = matches.map(m => m.index);
 
         let middleMap = new Map(); // 键为插入位置（标点后的索引），值为要插入的字符串
 
@@ -539,14 +529,26 @@
             const randomComment = texts[Math.floor(Math.random() * texts.length)];
             const commentLength = randomComment.length;
             
-            // --- 随机选择一个系列 ---
-            const selectedSeriesName = SERIES_NAMES[Math.floor(Math.random() * SERIES_NAMES.length)];
-            const seriesElements = SERIES[selectedSeriesName];
-            console.log(`🎨 选择系列: ${selectedSeriesName} (共 ${seriesElements.length} 个元素)`);
+            // --- 随机选择 1 到 2 个不重复的系列 ---
+            const seriesCount = Math.floor(Math.random() * 2) + 1; // 1 或 2
+            const shuffledNames = [...SERIES_NAMES];
+            for (let i = shuffledNames.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledNames[i], shuffledNames[j]] = [shuffledNames[j], shuffledNames[i]];
+            }
+            const selectedSeriesNames = shuffledNames.slice(0, seriesCount);
+            console.log(`🎨 选择系列个数: ${seriesCount}, 系列: ${selectedSeriesNames.join(', ')}`);
+
+            // 合并选中系列的元素
+            let combinedElements = [];
+            for (const name of selectedSeriesNames) {
+                combinedElements = combinedElements.concat(SERIES[name]);
+            }
+            console.log(`📦 合并后元素总数: ${combinedElements.length}`);
 
             // --- 根据文案长度动态决定表情包数量范围 ---
-            let minCount = 5;
-            let maxCount = 18;
+            let minCount = 4;   // 新最低值
+            let maxCount = 15;  // 新最高值
             if (commentLength < 5) {
                 // 短文本（<5字）：表情包少一点，最多8个
                 maxCount = 8;
@@ -554,16 +556,16 @@
                 // 长文本（>20字）：表情包多一点，最少8个
                 minCount = 8;
             }
-            // 中等长度（5-20字）：保持5-18不变
+            // 中等长度（5-20字）：保持4-15
 
-            // 确保 maxCount 不超过系列元素总数
-            maxCount = Math.min(maxCount, seriesElements.length);
+            // 确保 maxCount 不超过合并后元素总数
+            maxCount = Math.min(maxCount, combinedElements.length);
             minCount = Math.min(minCount, maxCount); // 调整 minCount 不能超过 maxCount
 
             const tailCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount; // 动态范围
 
-            // 从选中的系列中随机抽取 tailCount 个不重复的元素（打乱后取前N个）
-            const shuffled = [...seriesElements];
+            // 从合并的元素中随机抽取 tailCount 个不重复的元素（打乱后取前N个）
+            const shuffled = [...combinedElements];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -590,7 +592,7 @@
             finalComment += endPart;
 
             console.log(`📝 选择文案: "${randomComment}" (长度 ${commentLength} 字)`);
-            console.log(`🎲 从系列 ${selectedSeriesName} 抽取 ${tailCount} 个元素 (范围 ${minCount}-${maxCount}): ${selected.join(', ')}`);
+            console.log(`🎲 抽取 ${tailCount} 个元素 (范围 ${minCount}-${maxCount}): ${selected.join(', ')}`);
             console.log(`📤 最终评论: "${finalComment}"`);
 
             input.focus();
@@ -708,7 +710,7 @@
 
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v7.7 (多系列·标点限制)</h3>
+                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v7.8 (多系列·数量调整)</h3>
                 <span style="cursor:pointer; font-size:18px; color:#99a2aa;" id="close-panel-v15">✕</span>
             </div>
             <div style="margin-bottom: 12px;">
