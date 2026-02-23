@@ -1,23 +1,68 @@
 // ==UserScript==
-// @name        B站自动评论油猴脚本
-// @namespace  https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
-// @version      6.3
-// @description  逐层进入 bili-comment-rich-textarea，修复间隔设置无效的问题
+// @name         B站自动评论油猴脚本（前置随机组合小尾巴 - 表情包版）
+// @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
+// @version      6.7
+// @description  前置随机组合小尾巴，每次随机抽取5-18个元素并随机排列，让评论更独特
 // @author       GSJNZH
 // @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @license      MIT
-// @icon          https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/70/ab/15/70ab1507-a468-1dc9-ad3b-d4fe7d6f70dd/AppIcon-1x_U007epad-0-0-0-85-220-0.png/434x0w.webp
-// @downloadURL https://raw.githubusercontent.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/refs/heads/main/bilibili-autocomment.user.js
-// @updateURL https://raw.githubusercontent.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/refs/heads/main/bilibili-autocomment.user.js
+// @icon         https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/70/ab/15/70ab1507-a468-1dc9-ad3b-d4fe7d6f70dd/AppIcon-1x_U007epad-0-0-0-85-220-0.png/434x0w.webp
+// @downloadURL  https://raw.githubusercontent.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/refs/heads/main/bilibili-autocomment.user.js
+// @updateURL    https://raw.githubusercontent.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/refs/heads/main/bilibili-autocomment.user.js
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    console.log('🔥 B站自动评论 (精确定位版·修复间隔) 已启动');
+    console.log('🔥 B站自动评论 (前置随机组合小尾巴 - 表情包版) 已启动');
 
+    // ---------- 可自定义的小尾巴元素列表 ----------
+    const TAIL_ELEMENTS = [
+        '[Ave Mujica_挺好]',
+        '[Ave Mujica_再等一下]',
+        '[Ave Mujica_震惊]',
+        '[Ave Mujica_比叉叉]',
+        '[Ave Mujica_开心]',
+        '[Ave Mujica_哼]',
+        '[Ave Mujica_怎么突然]',
+        '[Ave Mujica_诶]',
+        '[Ave Mujica_一次买够]',
+        '[Ave Mujica_难道？]',
+        '[Ave Mujica_睡觉]',
+        '[Ave Mujica_我要告你]',
+        '[Ave Mujica_赌气]',
+        '[Ave Mujica_记得微笑]',
+        '[Ave Mujica_委屈]',
+        '[Ave Mujica_不行]',
+        '[Ave Mujica_美味]',
+        '[Ave Mujica_我有话说]',
+        '[Ave Mujica_害怕]',
+        '[Ave Mujica_愉快]',
+        '[Mygo表情包_害羞]',
+        '[Mygo表情包_生气]',
+        '[Mygo表情包_发送消息]',
+        '[Mygo表情包_抹茶芭菲]',
+        '[Mygo表情包_请点单]',
+        '[Mygo表情包_不要吵架]',
+        '[Mygo表情包_Love]',
+        '[Mygo表情包_让我看看]',
+        '[Mygo表情包_溜了溜了]',
+        '[Mygo表情包_那我呢？]',
+        '[Mygo表情包_创作中]',
+        '[Mygo表情包_探头]',
+        '[Mygo表情包_为什么！]',
+        '[Mygo表情包_刚睡醒]',
+        '[Mygo表情包_哈？]',
+        '[Mygo表情包_忧郁]',
+        '[Mygo表情包_不会吧？]',
+        '[Mygo表情包_大哭]',
+        '[Mygo表情包_有趣的女人]',
+        '[Mygo表情包_Block!]'
+    ];
+
+    // ---------- 配置存储 ----------
     const STORAGE_KEY_TEXT = 'bili_comment_texts_v15';
     const STORAGE_KEY_INTERVAL = 'bili_comment_interval_v15';
     const DEFAULT_TEXTS = `打卡\n路过\n支持一下\n好视频\n学到了\n三连支持`;
@@ -201,12 +246,33 @@
                 return false;
             }
             const randomComment = texts[Math.floor(Math.random() * texts.length)];
-            console.log(`📝 选择文案: ${randomComment}`);
+            
+            // --- 生成随机数量的小尾巴（5-18个）并随机排列 ---
+            // 1. 随机决定抽取多少个元素
+            const tailCount = Math.floor(Math.random() * (18 - 5 + 1)) + 5; // 5~18 随机
+            // 2. 打乱整个数组并取前 tailCount 个
+            const shuffled = [...TAIL_ELEMENTS];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            const selected = shuffled.slice(0, tailCount);
+            // 3. 再次打乱选中的子集（可选，但为了更随机，再打乱一次）
+            for (let i = selected.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [selected[i], selected[j]] = [selected[j], selected[i]];
+            }
+            const randomTail = selected.join('');
+            const finalComment = randomTail + randomComment; // 小尾巴前置
+
+            console.log(`📝 选择文案: "${randomComment}"`);
+            console.log(`🎲 抽取 ${tailCount} 个元素: ${selected.join(', ')}`);
+            console.log(`📤 最终评论: "${finalComment}"`);
 
             input.focus();
             await delay(300);
 
-            input.innerText = randomComment;
+            input.innerText = finalComment;
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
             input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
@@ -218,7 +284,7 @@
             }
 
             publishBtn.click();
-            statusDiv.innerText = `✅ 发送成功: ${randomComment.substring(0, 15)}...`;
+            statusDiv.innerText = `✅ 发送成功: ${finalComment.substring(0, 15)}...`;
             console.log('✅ 评论已发送');
             await delay(2000);
             return true;
@@ -234,7 +300,7 @@
         return textareaInput.value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     }
 
-    // 修复间隔问题：使用用户输入的间隔值设置延迟
+    // 使用用户输入的间隔值设置延迟
     function scheduleNext() {
         if (!isRunning) return;
         const intervalSec = parseInt(intervalInput.value, 10) || 60;
@@ -253,7 +319,7 @@
             if (isRunning) {
                 scheduleNext(); // 继续下一次调度
             }
-        }, intervalSec * 1000); // 这里使用正确的间隔时间
+        }, intervalSec * 1000);
     }
 
     function start() {
@@ -275,7 +341,7 @@
         startBtn.disabled = true;
         stopBtn.disabled = false;
         statusDiv.innerText = '▶️ 自动评论已启动';
-        scheduleNext(); // 立即执行第一次，不等待
+        scheduleNext(); // 立即执行第一次
     }
 
     function stop() {
@@ -319,7 +385,7 @@
 
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 (精确定位版·修复间隔)</h3>
+                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 (表情包小尾巴·限量版)</h3>
                 <span style="cursor:pointer; font-size:18px; color:#99a2aa;" id="close-panel-v15">✕</span>
             </div>
             <div style="margin-bottom: 12px;">
@@ -386,8 +452,4 @@
     }
 
     createUI();
-
 })();
-
-
-
