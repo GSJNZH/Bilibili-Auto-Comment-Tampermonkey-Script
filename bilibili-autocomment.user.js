@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         B站自动评论 v7.1（智能分布表情包·动态数量版）
+// @name         B站自动评论 v7.7（多系列·标点限制·新元素扩容）
 // @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
-// @version      7.1
-// @description  表情包随机分布在开头、标点后、结尾，表情包数量根据文案长度动态调整
+// @version      7.7
+// @description  每次随机选择一个系列的表情包（共7个系列），根据文案长度动态抽取个数，每个标点后最多跟一个表情（最后一个除外），随机分布在开头、标点后、结尾
 // @author       GSJNZH
 // @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
 // @grant        GM_setValue
@@ -16,110 +16,253 @@
 (function() {
     'use strict';
 
-    console.log('🔥 B站自动评论 v7.1 (智能分布表情包·动态数量版) 已启动');
+    console.log('🔥 B站自动评论 v7.7 (多系列·标点限制·新元素扩容) 已启动');
 
-    // ---------- 表情包元素列表 ----------
-    const TAIL_ELEMENTS = [
-        // Ave Mujica
-        '[Ave Mujica_挺好]',
-        '[Ave Mujica_再等一下]',
-        '[Ave Mujica_震惊]',
-        '[Ave Mujica_比叉叉]',
-        '[Ave Mujica_开心]',
-        '[Ave Mujica_哼]',
-        '[Ave Mujica_怎么突然]',
-        '[Ave Mujica_诶]',
-        '[Ave Mujica_一次买够]',
-        '[Ave Mujica_难道？]',
-        '[Ave Mujica_睡觉]',
-        '[Ave Mujica_我要告你]',
-        '[Ave Mujica_赌气]',
-        '[Ave Mujica_记得微笑]',
-        '[Ave Mujica_委屈]',
-        '[Ave Mujica_不行]',
-        '[Ave Mujica_美味]',
-        '[Ave Mujica_我有话说]',
-        '[Ave Mujica_害怕]',
-        '[Ave Mujica_愉快]',
-        // Mygo
-        '[Mygo表情包_害羞]',
-        '[Mygo表情包_生气]',
-        '[Mygo表情包_发送消息]',
-        '[Mygo表情包_抹茶芭菲]',
-        '[Mygo表情包_请点单]',
-        '[Mygo表情包_不要吵架]',
-        '[Mygo表情包_Love]',
-        '[Mygo表情包_让我看看]',
-        '[Mygo表情包_溜了溜了]',
-        '[Mygo表情包_那我呢？]',
-        '[Mygo表情包_创作中]',
-        '[Mygo表情包_探头]',
-        '[Mygo表情包_为什么！]',
-        '[Mygo表情包_刚睡醒]',
-        '[Mygo表情包_哈？]',
-        '[Mygo表情包_忧郁]',
-        '[Mygo表情包_不会吧？]',
-        '[Mygo表情包_大哭]',
-        '[Mygo表情包_有趣的女人]',
-        '[Mygo表情包_Block!]',
-        // 25年度表情包
-        '[25年度表情包_一]',
-        '[25年度表情包_起]',
-        '[25年度表情包_摸]',
-        '[25年度表情包_凹]',
-        '[25年度表情包_猫]',
-        '[25年度表情包_福到了]',
-        '[25年度表情包_马上有钱]',
-        '[25年度表情包_赞个点]',
-        '[25年度表情包_不太冷]',
-        '[25年度表情包_点个赞]',
-        '[25年度表情包_坏笑]',
-        '[25年度表情包_伸手]',
-        '[25年度表情包_戳一下]',
-        '[25年度表情包_点点]',
-        '[25年度表情包_问号]',
-        '[25年度表情包_藏狐]',
-        '[25年度表情包_ok]',
-        '[25年度表情包_比心]',
-        '[25年度表情包_戳戳]',
-        '[25年度表情包_马]',
-        '[25年度表情包_狗头]',
-        '[25年度表情包_ye]',
-        '[25年度表情包_送花]',
-        '[25年度表情包_强]',
-        '[25年度表情包_立]',
-        '[25年度表情包_猴]',
-        '[25年度表情包_趴趴]',
-        '[25年度表情包_鱼头]',
-        '[25年度表情包_鱼尾]',
-        '[25年度表情包_嗷]',
-        '[25年度表情包_马不]',
-        '[25年度表情包_停]',
-        '[25年度表情包_蹄]',
-        '[25年度表情包_拍一下]',
-        '[25年度表情包_当古人]',
-        // 热词系列
-        '[热词系列_再给一集]',
-        '[热词系列_我真棒]',
-        '[热词系列_有点意思]',
-        '[热词系列_可爱捏]',
-        '[热词系列_真正的英雄]',
-        '[热词系列_什么叫惊喜]',
-        '[热词系列_再飞亿会儿]',
-        '[热词系列_啊?]',
-        '[热词系列_发刀大队]',
-        '[热词系列_道友请了]',
-        '[热词系列_念头通达]',
-        '[热词系列_课代表]',
-        '[热词表情_世萌双冠]',
-        '[热词系列_谢谢老师]',
-        '[热词系列_大好人]',
-        '[热词系列_夸夸]',
-        '[热词系列_六到无语]',
-        '[热词系列_美貌惊人]',
-        '[热词系列_干杯]',
-        '[热词系列_肥肠自信]'
-    ];
+    // ---------- 表情包元素按系列分组 ----------
+    const SERIES = {
+        aveMujica: [
+            '[Ave Mujica_挺好]',
+            '[Ave Mujica_再等一下]',
+            '[Ave Mujica_震惊]',
+            '[Ave Mujica_比叉叉]',
+            '[Ave Mujica_开心]',
+            '[Ave Mujica_哼]',
+            '[Ave Mujica_怎么突然]',
+            '[Ave Mujica_诶]',
+            '[Ave Mujica_一次买够]',
+            '[Ave Mujica_难道？]',
+            '[Ave Mujica_睡觉]',
+            '[Ave Mujica_我要告你]',
+            '[Ave Mujica_赌气]',
+            '[Ave Mujica_记得微笑]',
+            '[Ave Mujica_委屈]',
+            '[Ave Mujica_不行]',
+            '[Ave Mujica_美味]',
+            '[Ave Mujica_我有话说]',
+            '[Ave Mujica_害怕]',
+            '[Ave Mujica_愉快]'
+        ],
+        mygo: [
+            '[Mygo表情包_害羞]',
+            '[Mygo表情包_生气]',
+            '[Mygo表情包_发送消息]',
+            '[Mygo表情包_抹茶芭菲]',
+            '[Mygo表情包_请点单]',
+            '[Mygo表情包_不要吵架]',
+            '[Mygo表情包_Love]',
+            '[Mygo表情包_让我看看]',
+            '[Mygo表情包_溜了溜了]',
+            '[Mygo表情包_那我呢？]',
+            '[Mygo表情包_创作中]',
+            '[Mygo表情包_探头]',
+            '[Mygo表情包_为什么！]',
+            '[Mygo表情包_刚睡醒]',
+            '[Mygo表情包_哈？]',
+            '[Mygo表情包_忧郁]',
+            '[Mygo表情包_不会吧？]',
+            '[Mygo表情包_大哭]',
+            '[Mygo表情包_有趣的女人]',
+            '[Mygo表情包_Block!]'
+        ],
+        year25: [
+            '[25年度表情包_一]',
+            '[25年度表情包_起]',
+            '[25年度表情包_摸]',
+            '[25年度表情包_凹]',
+            '[25年度表情包_猫]',
+            '[25年度表情包_福到了]',
+            '[25年度表情包_马上有钱]',
+            '[25年度表情包_赞个点]',
+            '[25年度表情包_不太冷]',
+            '[25年度表情包_点个赞]',
+            '[25年度表情包_坏笑]',
+            '[25年度表情包_伸手]',
+            '[25年度表情包_戳一下]',
+            '[25年度表情包_点点]',
+            '[25年度表情包_问号]',
+            '[25年度表情包_藏狐]',
+            '[25年度表情包_ok]',
+            '[25年度表情包_比心]',
+            '[25年度表情包_戳戳]',
+            '[25年度表情包_马]',
+            '[25年度表情包_狗头]',
+            '[25年度表情包_ye]',
+            '[25年度表情包_送花]',
+            '[25年度表情包_强]',
+            '[25年度表情包_立]',
+            '[25年度表情包_猴]',
+            '[25年度表情包_趴趴]',
+            '[25年度表情包_鱼头]',
+            '[25年度表情包_鱼尾]',
+            '[25年度表情包_嗷]',
+            '[25年度表情包_马不]',
+            '[25年度表情包_停]',
+            '[25年度表情包_蹄]',
+            '[25年度表情包_拍一下]',
+            '[25年度表情包_当古人]'
+        ],
+        hotWords: [
+            // 原有的热词系列
+            '[热词系列_再给一集]',
+            '[热词系列_我真棒]',
+            '[热词系列_有点意思]',
+            '[热词系列_可爱捏]',
+            '[热词系列_真正的英雄]',
+            '[热词系列_什么叫惊喜]',
+            '[热词系列_再飞亿会儿]',
+            '[热词系列_啊?]',
+            '[热词系列_发刀大队]',
+            '[热词系列_道友请了]',
+            '[热词系列_念头通达]',
+            '[热词系列_课代表]',
+            '[热词表情_世萌双冠]',
+            '[热词系列_谢谢老师]',
+            '[热词系列_大好人]',
+            '[热词系列_夸夸]',
+            '[热词系列_六到无语]',
+            '[热词系列_美貌惊人]',
+            '[热词系列_干杯]',
+            '[热词系列_肥肠自信]',
+            // 之前新增的热词
+            '[热词系列_“狼火”]',
+            '[热词系列_你可真星]',
+            '[热词系列_献上膝盖]',
+            '[热词系列_我裂开了]',
+            '[热词系列_有内味了]',
+            '[热词系列_猛男必看]',
+            '[热词系列_奥力给]',
+            '[热词系列_神仙UP]',
+            '[热词系列_问号]',
+            '[热词系列_我哭了]',
+            '[热词系列_不愧是你]',
+            '[热词系列_高产]',
+            '[热词系列_真香]',
+            '[热词系列_我全都要]',
+            '[热词系列_爷关更]',
+            '[热词系列_锤]',
+            '[热词系列_我酸了]',
+            '[热词系列_有生之年]',
+            '[热词系列_镇站之宝]',
+            '[热词系列_我太南了]',
+            '[热词系列_完结撒花]',
+            '[热词系列_大师球]',
+            '[热词系列_知识盲区]',
+            '[热词系列_爷青回]',
+            '[热词系列_芜湖起飞]',
+            '[热词系列_夺笋呐]',
+            '[热词系列_两面包夹芝士]',
+            '[热词系列_梦幻联动]',
+            '[热词系列_泪目]',
+            '[热词系列_保护]',
+            '[热词系列_爱了爱了]',
+            '[热词系列_可以]',
+            '[热词系列_希望没事]',
+            '[热词系列_打卡]',
+            '[热词系列_DNA]',
+            '[热词系列_这次一定]',
+            '[热词系列_AWSL]',
+            '[热词系列_霸体在此]',
+            '[热词系列_递话筒]',
+            '[热词系列_你细品]',
+            '[热词系列_咕咕]',
+            '[热词系列_张三]',
+            '[热词系列_害]',
+            '[念诗之王]',
+            '[热词系列_对象]',
+            '[热词系列_不孤鸟]',
+            '[热词系列_洛水天依]',
+            '[热词系列_秀]',
+            '[热词系列_标准结局]',
+            '[热词系列_B站有房]',
+            '[热词系列_破防了]',
+            '[热词系列_多谢款待]',
+            '[热词系列_燃起来了]',
+            '[热词系列_YYDS]',
+            '[热词系列_入站必刷]',
+            '[热词系列_赛博考古]',
+            '[热词系列_饮茶先啦]',
+            '[热词系列_再来亿遍]',
+            '[热词系列_热乎]',
+            '[热词系列_好活]',
+            '[热词系列_热门通知]',
+            '[热词系列_好家伙]',
+            '[热词系列_排面]',
+            '[热词系列_我故意的]',
+            '[热词系列_知识增加]',
+            '[热词系列_三连]',
+            '[热词系列_妙啊]',
+            '[热词系列_哇酷哇酷]',
+            '[热词系列_呵呵]',
+            '[热词系列_上任鹅城]',
+            '[热词系列_好人好抱]',
+            '[热词系列_好起来了]',
+            '[热词系列_守护世界]',
+            '[热词系列_暖暖的]',
+            '[热词系列_因为TA善]',
+            '[热词系列_助力梦想]',
+            '[热词系列_确诊为好人]',
+            '[热词系列_你是这个]',
+            '[热词系列_优雅]',
+            '[热词表情_哎呦不错哦]',
+            '[热词系列_好耶]',
+            '[热词系列_你币有了]',
+            '[热词系列_吹爆]'
+        ],
+        pigeon: [
+            '[有鸽调]',
+            '[可爱捏]',
+            '[手工鸽]',
+            '[田园牧鸽]',
+            '[B站一鸽]',
+            '[冻鳗高手]',
+            '[鸽你太美]',
+            '[神操作]',
+            '[吃瓜群鸽]',
+            '[求更新]',
+            '[Vlo鸽]',
+            '[如听仙乐]',
+            '[字少事大]',
+            '[笑出咕叫]',
+            '[鸽物致知]',
+            '[鸽就鸽位]',
+            '[量子啾缠]',
+            '[来一勺]',
+            '[行鸽无疆]',
+            '[载鸽载舞]',
+            '[飞驰鸽生]',
+            '[催更]',
+            '[神剧打卡]',
+            '[神片打卡]',
+            '[神作打卡]'
+        ],
+        che: [
+            '[CHE_emmm]',
+            '[CHE_respect]',
+            '[CHE_salute]',
+            '[CHE_吹空调]',
+            '[CHE_大为震撼]',
+            '[CHE_拿来吧你]',
+            '[CHE_强壮]',
+            '[CHE_晒化了]',
+            '[CHE_学习ing]',
+            '[CHE_嘬奶茶]'
+        ],
+        tarot: [
+            '[2233塔罗牌_？？？]',
+            '[2233塔罗牌_666]',
+            '[2233塔罗牌_AWSL]',
+            '[2233塔罗牌_奥利给]',
+            '[2233塔罗牌_比心心]',
+            '[2233塔罗牌_不愧是我]',
+            '[2233塔罗牌_不约]',
+            '[2233塔罗牌_撒花]',
+            '[2233塔罗牌_我觉得星]',
+            '[2233塔罗牌_下次一定]'
+        ]
+    };
+
+    // 系列名称列表，用于随机选择
+    const SERIES_NAMES = ['aveMujica', 'mygo', 'year25', 'hotWords', 'pigeon', 'che', 'tarot'];
 
     // ---------- 配置存储 ----------
     const STORAGE_KEY_TEXT = 'bili_comment_texts_v15';
@@ -276,16 +419,15 @@
     }
 
     /**
-     * 智能分布表情包：
-     * 将 selected 数组中的元素随机分配到三个位置：
-     * - start: 放在文案开头
-     * - middle: 插入到每个标点符号后面
-     * - end: 放在文案结尾
+     * 智能分布表情包（新规则）：
+     * - 将 selected 数组中的元素随机分配到三个位置：start（开头）、middle（标点后）、end（结尾）
+     * - 每个标点符号（除最后一个外）后面最多跟一个表情包，最后一个标点后面可以跟多个
+     * - 省略号"……"视为一个标点
      */
     function distributeElements(selected, text) {
         if (selected.length === 0) return { startPart: '', middleMap: new Map(), endPart: '' };
 
-        // 随机分配每个元素的位置
+        // 1. 随机分配每个元素到 start/middle/end
         const positions = [];
         for (let i = 0; i < selected.length; i++) {
             const r = Math.random();
@@ -294,7 +436,7 @@
             else positions.push('end');
         }
 
-        // 构建 start 和 end 部分（保持原有顺序）
+        // 2. 分离 start、end 和 middle 元素
         let startPart = '';
         let endPart = '';
         const middleElements = [];
@@ -304,23 +446,60 @@
             else middleElements.push(selected[i]);
         }
 
-        // 处理 middle 插入
-        // 找出所有标点符号的位置
-        const punctuationRegex = /[，。！？；：,.!?;:]/g;
+        // 3. 找出所有标点符号的位置（包括省略号）
+        // 匹配中文和英文标点，以及省略号……
+        const punctuationRegex = /[，。！？；：,.!?;:]|…+/g;
         const matches = [...text.matchAll(punctuationRegex)];
-        const punctuationIndices = matches.map(m => m.index);
+        // 去重处理：连续省略号视为一个标点，但我们匹配到的已经是单独的匹配项，每个匹配可能包含多个省略号字符
+        // 我们需要的是每个标点符号的位置（索引），并标记最后一个标点
+        const punctuationIndices = [];
+        for (const match of matches) {
+            // 如果匹配到连续的省略号，只记录第一个字符的位置
+            punctuationIndices.push(match.index);
+            // 对于连续省略号，跳过后续字符避免重复
+            if (match[0].startsWith('…')) {
+                // match[0] 可能包含多个省略号，我们只记录一个位置，后面的字符自动跳过
+                // 但正则匹配会匹配整个省略号序列，index指向第一个字符，因此已经正确
+            }
+        }
 
         let middleMap = new Map(); // 键为插入位置（标点后的索引），值为要插入的字符串
+
         if (punctuationIndices.length > 0 && middleElements.length > 0) {
-            // 将 middleElements 分配到各个标点后
-            for (let i = 0; i < middleElements.length; i++) {
-                const punctIndex = punctuationIndices[i % punctuationIndices.length]; // 循环使用标点
+            // 确定最后一个标点的索引
+            const lastPunctIndex = punctuationIndices[punctuationIndices.length - 1];
+            
+            // 为每个标点分配 middle 元素
+            let elementIndex = 0;
+            for (let i = 0; i < punctuationIndices.length; i++) {
+                const punctIndex = punctuationIndices[i];
                 const insertPos = punctIndex + 1; // 标点后面
-                if (!middleMap.has(insertPos)) middleMap.set(insertPos, '');
-                middleMap.set(insertPos, middleMap.get(insertPos) + middleElements[i]);
+                if (i === punctuationIndices.length - 1) {
+                    // 最后一个标点：分配剩余所有 middle 元素
+                    let remaining = '';
+                    while (elementIndex < middleElements.length) {
+                        remaining += middleElements[elementIndex];
+                        elementIndex++;
+                    }
+                    if (remaining) {
+                        if (!middleMap.has(insertPos)) middleMap.set(insertPos, '');
+                        middleMap.set(insertPos, middleMap.get(insertPos) + remaining);
+                    }
+                } else {
+                    // 非最后一个标点：最多分配一个元素
+                    if (elementIndex < middleElements.length) {
+                        if (!middleMap.has(insertPos)) middleMap.set(insertPos, '');
+                        middleMap.set(insertPos, middleMap.get(insertPos) + middleElements[elementIndex]);
+                        elementIndex++;
+                    }
+                }
+            }
+            // 如果还有剩余的 middle 元素（理论上不会，但以防万一），追加到 endPart
+            if (elementIndex < middleElements.length) {
+                endPart = middleElements.slice(elementIndex).join('') + endPart;
             }
         } else {
-            // 没有标点，则全部归入 end 部分
+            // 没有标点，全部 middle 元素归入 endPart
             endPart = middleElements.join('') + endPart;
             middleMap.clear();
         }
@@ -359,6 +538,11 @@
             }
             const randomComment = texts[Math.floor(Math.random() * texts.length)];
             const commentLength = randomComment.length;
+            
+            // --- 随机选择一个系列 ---
+            const selectedSeriesName = SERIES_NAMES[Math.floor(Math.random() * SERIES_NAMES.length)];
+            const seriesElements = SERIES[selectedSeriesName];
+            console.log(`🎨 选择系列: ${selectedSeriesName} (共 ${seriesElements.length} 个元素)`);
 
             // --- 根据文案长度动态决定表情包数量范围 ---
             let minCount = 5;
@@ -366,16 +550,20 @@
             if (commentLength < 5) {
                 // 短文本（<5字）：表情包少一点，最多8个
                 maxCount = 8;
-            } else if (commentLength > 10) {
-                // 长文本（>10字）：表情包多一点，最少8个
+            } else if (commentLength > 20) {
+                // 长文本（>20字）：表情包多一点，最少8个
                 minCount = 8;
             }
-            // 中等长度（5-10字）：保持5-18不变
+            // 中等长度（5-20字）：保持5-18不变
+
+            // 确保 maxCount 不超过系列元素总数
+            maxCount = Math.min(maxCount, seriesElements.length);
+            minCount = Math.min(minCount, maxCount); // 调整 minCount 不能超过 maxCount
 
             const tailCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount; // 动态范围
 
-            // 打乱整个数组并取前 tailCount 个
-            const shuffled = [...TAIL_ELEMENTS];
+            // 从选中的系列中随机抽取 tailCount 个不重复的元素（打乱后取前N个）
+            const shuffled = [...seriesElements];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -387,7 +575,7 @@
                 [selected[i], selected[j]] = [selected[j], selected[i]];
             }
 
-            // 智能分布表情包
+            // 智能分布表情包（新规则）
             const { startPart, middleMap, endPart } = distributeElements(selected, randomComment);
 
             // 构建最终评论：startPart + 插入表情后的文案 + endPart
@@ -402,7 +590,7 @@
             finalComment += endPart;
 
             console.log(`📝 选择文案: "${randomComment}" (长度 ${commentLength} 字)`);
-            console.log(`🎲 抽取 ${tailCount} 个元素 (范围 ${minCount}-${maxCount}): ${selected.join(', ')}`);
+            console.log(`🎲 从系列 ${selectedSeriesName} 抽取 ${tailCount} 个元素 (范围 ${minCount}-${maxCount}): ${selected.join(', ')}`);
             console.log(`📤 最终评论: "${finalComment}"`);
 
             input.focus();
@@ -520,7 +708,7 @@
 
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v7.1 (动态数量表情包)</h3>
+                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v7.7 (多系列·标点限制)</h3>
                 <span style="cursor:pointer; font-size:18px; color:#99a2aa;" id="close-panel-v15">✕</span>
             </div>
             <div style="margin-bottom: 12px;">
