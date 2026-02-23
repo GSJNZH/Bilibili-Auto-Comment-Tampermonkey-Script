@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         B站自动评论油猴脚本（前置随机组合小尾巴 - 表情包版）
+// @name         B站自动评论 v7.1（智能分布表情包·动态数量版）
 // @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
-// @version      6.7
-// @description  前置随机组合小尾巴，每次随机抽取5-18个元素并随机排列，让评论更独特
+// @version      7.1
+// @description  表情包随机分布在开头、标点后、结尾，表情包数量根据文案长度动态调整
 // @author       GSJNZH
 // @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
 // @grant        GM_setValue
@@ -16,10 +16,11 @@
 (function() {
     'use strict';
 
-    console.log('🔥 B站自动评论 (前置随机组合小尾巴 - 表情包版) 已启动');
+    console.log('🔥 B站自动评论 v7.1 (智能分布表情包·动态数量版) 已启动');
 
-    // ---------- 可自定义的小尾巴元素列表 ----------
+    // ---------- 表情包元素列表 ----------
     const TAIL_ELEMENTS = [
+        // Ave Mujica
         '[Ave Mujica_挺好]',
         '[Ave Mujica_再等一下]',
         '[Ave Mujica_震惊]',
@@ -40,6 +41,7 @@
         '[Ave Mujica_我有话说]',
         '[Ave Mujica_害怕]',
         '[Ave Mujica_愉快]',
+        // Mygo
         '[Mygo表情包_害羞]',
         '[Mygo表情包_生气]',
         '[Mygo表情包_发送消息]',
@@ -59,7 +61,64 @@
         '[Mygo表情包_不会吧？]',
         '[Mygo表情包_大哭]',
         '[Mygo表情包_有趣的女人]',
-        '[Mygo表情包_Block!]'
+        '[Mygo表情包_Block!]',
+        // 25年度表情包
+        '[25年度表情包_一]',
+        '[25年度表情包_起]',
+        '[25年度表情包_摸]',
+        '[25年度表情包_凹]',
+        '[25年度表情包_猫]',
+        '[25年度表情包_福到了]',
+        '[25年度表情包_马上有钱]',
+        '[25年度表情包_赞个点]',
+        '[25年度表情包_不太冷]',
+        '[25年度表情包_点个赞]',
+        '[25年度表情包_坏笑]',
+        '[25年度表情包_伸手]',
+        '[25年度表情包_戳一下]',
+        '[25年度表情包_点点]',
+        '[25年度表情包_问号]',
+        '[25年度表情包_藏狐]',
+        '[25年度表情包_ok]',
+        '[25年度表情包_比心]',
+        '[25年度表情包_戳戳]',
+        '[25年度表情包_马]',
+        '[25年度表情包_狗头]',
+        '[25年度表情包_ye]',
+        '[25年度表情包_送花]',
+        '[25年度表情包_强]',
+        '[25年度表情包_立]',
+        '[25年度表情包_猴]',
+        '[25年度表情包_趴趴]',
+        '[25年度表情包_鱼头]',
+        '[25年度表情包_鱼尾]',
+        '[25年度表情包_嗷]',
+        '[25年度表情包_马不]',
+        '[25年度表情包_停]',
+        '[25年度表情包_蹄]',
+        '[25年度表情包_拍一下]',
+        '[25年度表情包_当古人]',
+        // 热词系列
+        '[热词系列_再给一集]',
+        '[热词系列_我真棒]',
+        '[热词系列_有点意思]',
+        '[热词系列_可爱捏]',
+        '[热词系列_真正的英雄]',
+        '[热词系列_什么叫惊喜]',
+        '[热词系列_再飞亿会儿]',
+        '[热词系列_啊?]',
+        '[热词系列_发刀大队]',
+        '[热词系列_道友请了]',
+        '[热词系列_念头通达]',
+        '[热词系列_课代表]',
+        '[热词表情_世萌双冠]',
+        '[热词系列_谢谢老师]',
+        '[热词系列_大好人]',
+        '[热词系列_夸夸]',
+        '[热词系列_六到无语]',
+        '[热词系列_美貌惊人]',
+        '[热词系列_干杯]',
+        '[热词系列_肥肠自信]'
     ];
 
     // ---------- 配置存储 ----------
@@ -216,6 +275,59 @@
         }
     }
 
+    /**
+     * 智能分布表情包：
+     * 将 selected 数组中的元素随机分配到三个位置：
+     * - start: 放在文案开头
+     * - middle: 插入到每个标点符号后面
+     * - end: 放在文案结尾
+     */
+    function distributeElements(selected, text) {
+        if (selected.length === 0) return { startPart: '', middleMap: new Map(), endPart: '' };
+
+        // 随机分配每个元素的位置
+        const positions = [];
+        for (let i = 0; i < selected.length; i++) {
+            const r = Math.random();
+            if (r < 0.33) positions.push('start');
+            else if (r < 0.66) positions.push('middle');
+            else positions.push('end');
+        }
+
+        // 构建 start 和 end 部分（保持原有顺序）
+        let startPart = '';
+        let endPart = '';
+        const middleElements = [];
+        for (let i = 0; i < selected.length; i++) {
+            if (positions[i] === 'start') startPart += selected[i];
+            else if (positions[i] === 'end') endPart += selected[i];
+            else middleElements.push(selected[i]);
+        }
+
+        // 处理 middle 插入
+        // 找出所有标点符号的位置
+        const punctuationRegex = /[，。！？；：,.!?;:]/g;
+        const matches = [...text.matchAll(punctuationRegex)];
+        const punctuationIndices = matches.map(m => m.index);
+
+        let middleMap = new Map(); // 键为插入位置（标点后的索引），值为要插入的字符串
+        if (punctuationIndices.length > 0 && middleElements.length > 0) {
+            // 将 middleElements 分配到各个标点后
+            for (let i = 0; i < middleElements.length; i++) {
+                const punctIndex = punctuationIndices[i % punctuationIndices.length]; // 循环使用标点
+                const insertPos = punctIndex + 1; // 标点后面
+                if (!middleMap.has(insertPos)) middleMap.set(insertPos, '');
+                middleMap.set(insertPos, middleMap.get(insertPos) + middleElements[i]);
+            }
+        } else {
+            // 没有标点，则全部归入 end 部分
+            endPart = middleElements.join('') + endPart;
+            middleMap.clear();
+        }
+
+        return { startPart, middleMap, endPart };
+    }
+
     async function sendOneComment() {
         try {
             statusDiv.innerText = '⏳ 滚动到评论区...';
@@ -246,27 +358,51 @@
                 return false;
             }
             const randomComment = texts[Math.floor(Math.random() * texts.length)];
-            
-            // --- 生成随机数量的小尾巴（5-18个）并随机排列 ---
-            // 1. 随机决定抽取多少个元素
-            const tailCount = Math.floor(Math.random() * (18 - 5 + 1)) + 5; // 5~18 随机
-            // 2. 打乱整个数组并取前 tailCount 个
+            const commentLength = randomComment.length;
+
+            // --- 根据文案长度动态决定表情包数量范围 ---
+            let minCount = 5;
+            let maxCount = 18;
+            if (commentLength < 5) {
+                // 短文本（<5字）：表情包少一点，最多8个
+                maxCount = 8;
+            } else if (commentLength > 10) {
+                // 长文本（>10字）：表情包多一点，最少8个
+                minCount = 8;
+            }
+            // 中等长度（5-10字）：保持5-18不变
+
+            const tailCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount; // 动态范围
+
+            // 打乱整个数组并取前 tailCount 个
             const shuffled = [...TAIL_ELEMENTS];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
             const selected = shuffled.slice(0, tailCount);
-            // 3. 再次打乱选中的子集（可选，但为了更随机，再打乱一次）
+            // 再次打乱选中的子集，增加随机性
             for (let i = selected.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [selected[i], selected[j]] = [selected[j], selected[i]];
             }
-            const randomTail = selected.join('');
-            const finalComment = randomTail + randomComment; // 小尾巴前置
 
-            console.log(`📝 选择文案: "${randomComment}"`);
-            console.log(`🎲 抽取 ${tailCount} 个元素: ${selected.join(', ')}`);
+            // 智能分布表情包
+            const { startPart, middleMap, endPart } = distributeElements(selected, randomComment);
+
+            // 构建最终评论：startPart + 插入表情后的文案 + endPart
+            let finalComment = startPart;
+            // 逐字符构建文案，在标点后插入对应表情
+            for (let i = 0; i < randomComment.length; i++) {
+                finalComment += randomComment[i];
+                if (middleMap.has(i + 1)) { // 注意插入位置是在当前字符之后
+                    finalComment += middleMap.get(i + 1);
+                }
+            }
+            finalComment += endPart;
+
+            console.log(`📝 选择文案: "${randomComment}" (长度 ${commentLength} 字)`);
+            console.log(`🎲 抽取 ${tailCount} 个元素 (范围 ${minCount}-${maxCount}): ${selected.join(', ')}`);
             console.log(`📤 最终评论: "${finalComment}"`);
 
             input.focus();
@@ -300,7 +436,6 @@
         return textareaInput.value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     }
 
-    // 使用用户输入的间隔值设置延迟
     function scheduleNext() {
         if (!isRunning) return;
         const intervalSec = parseInt(intervalInput.value, 10) || 60;
@@ -317,7 +452,7 @@
                 }
             }
             if (isRunning) {
-                scheduleNext(); // 继续下一次调度
+                scheduleNext();
             }
         }, intervalSec * 1000);
     }
@@ -341,7 +476,7 @@
         startBtn.disabled = true;
         stopBtn.disabled = false;
         statusDiv.innerText = '▶️ 自动评论已启动';
-        scheduleNext(); // 立即执行第一次
+        scheduleNext();
     }
 
     function stop() {
@@ -385,7 +520,7 @@
 
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 (表情包小尾巴·限量版)</h3>
+                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v7.1 (动态数量表情包)</h3>
                 <span style="cursor:pointer; font-size:18px; color:#99a2aa;" id="close-panel-v15">✕</span>
             </div>
             <div style="margin-bottom: 12px;">
