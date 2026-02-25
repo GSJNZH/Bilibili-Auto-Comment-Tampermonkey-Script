@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         B站自动评论 v8.1（系列补齐·海量新表情）
+// @name         B站自动评论 v8.3（剩余计数+深色模式）
 // @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
-// @version      8.1
-// @description  表情包随机分布在开头、结尾或标点后，避免夹在中间。如果选中系列元素不足，自动添加新系列。新增大量表情包系列。
+// @version      8.3
+// @description  表情包随机分布，自动删除已发文案，显示剩余条数，适配深色模式。
 // @author       GSJNZH
 // @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
 // @grant        GM_setValue
@@ -16,7 +16,7 @@
 (function() {
     'use strict';
 
-    console.log('🔥 B站自动评论 v8.1 (系列补齐·海量新表情) 已启动');
+    console.log('🔥 B站自动评论 v8.3 (剩余计数+深色模式) 已启动');
 
     // ---------- 表情包元素按系列分组 ----------
     const SERIES = {
@@ -257,7 +257,6 @@
             '[2233塔罗牌_我觉得星]',
             '[2233塔罗牌_下次一定]'
         ],
-        // 新系列：小会员绿豆人
         xiaohui_lvdouren: [
             '[小会员绿豆人_wink]',
             '[小会员绿豆人_惊吓]',
@@ -284,7 +283,6 @@
             '[小会员绿豆人_大哭]',
             '[小会员绿豆人_狗头微笑]'
         ],
-        // 新系列：大会员粉豆人
         dahuiyuan_fendouren: [
             '[大会员粉豆人_AWSL]',
             '[大会员粉豆人_啊？]',
@@ -306,12 +304,10 @@
             '[大会员粉豆人_开小小的花]',
             '[大会员粉豆人_开学了？]'
         ],
-        // 新系列：拜年纪2022
         bainianji2022: [
             '[拜年纪2022_比心]',
             '[拜年纪2022_摸鱼]'
         ],
-        // 新系列：宇宙机器人
         yuzhou_jiqiren: [
             '[宇宙机器人_萌]',
             '[宇宙机器人_AWSL]',
@@ -334,7 +330,6 @@
             '[宇宙机器人_吹爆]',
             '[宇宙机器人_快跑]'
         ],
-        // 新系列：那兔
         natu: [
             '[那兔_合个影]',
             '[那兔_囧]',
@@ -354,7 +349,6 @@
             '[那兔_呃]',
             '[那兔_擦]'
         ],
-        // 新系列：小绿和小蓝
         xiaolv_he_xiaolan: [
             '[小绿和小蓝_生气]',
             '[小绿和小蓝_哇啊啊啊]',
@@ -385,7 +379,6 @@
             '[小绿和小蓝_哈哈]',
             '[小绿和小蓝_喝水]'
         ],
-        // 新系列：崩坏3
         benghuai3: [
             '[崩坏3_微笑]',
             '[崩坏3_开心]',
@@ -418,7 +411,6 @@
             '[崩坏3_无辜]',
             '[崩坏3_星星眼]'
         ],
-        // 新系列：2233娘
         niang2233: [
             '[2233娘_大笑]',
             '[2233娘_吃惊]',
@@ -436,7 +428,6 @@
             '[2233娘_吐魂]',
             '[2233娘_无言]'
         ],
-        // 新系列：鹿鸣
         luming: [
             '[鹿鸣_疑问]',
             '[鹿鸣_嗨]',
@@ -455,7 +446,6 @@
             '[鹿鸣_赞]',
             '[鹿鸣_吃]'
         ],
-        // 新系列：罗小黑
         luoxiaohei: [
             '[罗小黑_鼓掌]',
             '[罗小黑_你好呀]',
@@ -476,7 +466,7 @@
         ]
     };
 
-    // 系列名称列表，用于随机选择（包含所有新系列）
+    // 系列名称列表
     const SERIES_NAMES = [
         'aveMujica', 'mygo', 'year25', 'hotWords', 'pigeon', 'che', 'tarot',
         'xiaohui_lvdouren', 'dahuiyuan_fendouren', 'bainianji2022', 'yuzhou_jiqiren',
@@ -492,7 +482,7 @@
     let isRunning = false;
     let failCount = 0;
     const MAX_FAILS = 3;
-    let panel, textareaInput, intervalInput, startBtn, stopBtn, statusDiv;
+    let panel, textareaInput, intervalInput, startBtn, stopBtn, statusDiv, countSpan;
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -526,7 +516,6 @@
     }
 
     async function findElements(shadowRoot) {
-        // 1. 找到 bili-comment-box
         let commentBox = shadowRoot.querySelector('bili-comment-box');
         if (!commentBox) {
             console.log('⏳ bili-comment-box 尚未出现，等待...');
@@ -546,7 +535,6 @@
         commentBox.click();
         await delay(800);
 
-        // 2. 获取 bili-comment-box 的 shadowRoot
         let boxShadowRoot = null;
         for (let i = 0; i < 20; i++) {
             if (commentBox.shadowRoot) {
@@ -561,7 +549,6 @@
             return null;
         }
 
-        // 3. 在 boxShadowRoot 中查找 bili-comment-rich-textarea
         let richTextarea = boxShadowRoot.querySelector('bili-comment-rich-textarea');
         if (!richTextarea) {
             console.error('❌ 未找到 bili-comment-rich-textarea');
@@ -569,7 +556,6 @@
         }
         console.log('✅ 找到 bili-comment-rich-textarea');
 
-        // 4. 获取 richTextarea 的 shadowRoot
         let richShadowRoot = null;
         for (let i = 0; i < 20; i++) {
             if (richTextarea.shadowRoot) {
@@ -584,7 +570,6 @@
             return null;
         }
 
-        // 5. 在 richShadowRoot 中查找 contenteditable 输入框（等待出现）
         let input = null;
         for (let i = 0; i < 10; i++) {
             input = richShadowRoot.querySelector('div[contenteditable="true"]');
@@ -597,9 +582,7 @@
         }
         console.log('✅ 找到输入框');
 
-        // 6. 查找发布按钮（可能在 richShadowRoot 或 boxShadowRoot）
         let publishBtn = null;
-        // 先在 richShadowRoot 中找
         const richButtons = richShadowRoot.querySelectorAll('button');
         for (const btn of richButtons) {
             if (btn.textContent.trim() === '发布') {
@@ -608,7 +591,6 @@
             }
         }
         if (!publishBtn) {
-            // 再到 boxShadowRoot 中找
             const boxButtons = boxShadowRoot.querySelectorAll('button');
             for (const btn of boxButtons) {
                 if (btn.textContent.trim() === '发布') {
@@ -637,16 +619,9 @@
         }
     }
 
-    /**
-     * 智能分布表情包（优化版）：
-     * - 将 selected 数组中的元素随机分配到三个位置：start（开头）、middle（标点后）、end（结尾）
-     * - 对于标点后插入：合并连续标点，只在每个连续标点组的最后一个标点后插入，避免夹在两个标点之间
-     * - 每个非最后标点组后最多跟一个表情包，最后标点组后可以跟多个
-     */
     function distributeElements(selected, text) {
         if (selected.length === 0) return { startPart: '', middleMap: new Map(), endPart: '' };
 
-        // 1. 随机分配每个元素到 start/middle/end
         const positions = [];
         for (let i = 0; i < selected.length; i++) {
             const r = Math.random();
@@ -655,7 +630,6 @@
             else positions.push('end');
         }
 
-        // 2. 分离 start、end 和 middle 元素
         let startPart = '';
         let endPart = '';
         const middleElements = [];
@@ -665,12 +639,10 @@
             else middleElements.push(selected[i]);
         }
 
-        // 3. 找出所有标点符号的位置（包括省略号和连续英文点号）
         const punctuationRegex = /[，。！？；：,.!?;:]|…+|\.{2,}/g;
         const matches = [...text.matchAll(punctuationRegex)];
         const rawIndices = matches.map(m => m.index);
 
-        // 4. 合并连续标点（间隔为1视为连续）
         const mergedPunctIndices = [];
         if (rawIndices.length > 0) {
             let currentGroup = [rawIndices[0]];
@@ -685,19 +657,15 @@
             mergedPunctIndices.push(currentGroup[currentGroup.length - 1]);
         }
 
-        let middleMap = new Map(); // 键为插入位置（标点后的索引），值为要插入的字符串
+        let middleMap = new Map();
 
         if (mergedPunctIndices.length > 0 && middleElements.length > 0) {
-            // 确定最后一个标点组的索引
             const lastPunctIndex = mergedPunctIndices[mergedPunctIndices.length - 1];
-
-            // 为每个标点组分配 middle 元素
             let elementIndex = 0;
             for (let i = 0; i < mergedPunctIndices.length; i++) {
                 const punctIndex = mergedPunctIndices[i];
-                const insertPos = punctIndex + 1; // 标点后面
+                const insertPos = punctIndex + 1;
                 if (i === mergedPunctIndices.length - 1) {
-                    // 最后一个标点组：分配剩余所有 middle 元素
                     let remaining = '';
                     while (elementIndex < middleElements.length) {
                         remaining += middleElements[elementIndex];
@@ -708,7 +676,6 @@
                         middleMap.set(insertPos, middleMap.get(insertPos) + remaining);
                     }
                 } else {
-                    // 非最后一个标点组：最多分配一个元素
                     if (elementIndex < middleElements.length) {
                         if (!middleMap.has(insertPos)) middleMap.set(insertPos, '');
                         middleMap.set(insertPos, middleMap.get(insertPos) + middleElements[elementIndex]);
@@ -716,17 +683,21 @@
                     }
                 }
             }
-            // 如果还有剩余的 middle 元素，追加到 endPart
             if (elementIndex < middleElements.length) {
                 endPart = middleElements.slice(elementIndex).join('') + endPart;
             }
         } else {
-            // 没有标点，全部 middle 元素归入 endPart
             endPart = middleElements.join('') + endPart;
             middleMap.clear();
         }
 
         return { startPart, middleMap, endPart };
+    }
+
+    // 更新剩余文案计数
+    function updateCount() {
+        const texts = getCommentList();
+        countSpan.textContent = `剩余 ${texts.length} 条`;
     }
 
     async function sendOneComment() {
@@ -758,11 +729,11 @@
                 stop();
                 return false;
             }
-            const randomComment = texts[Math.floor(Math.random() * texts.length)];
+            const selectedIndex = Math.floor(Math.random() * texts.length);
+            const randomComment = texts[selectedIndex];
             const commentLength = randomComment.length;
 
-            // --- 随机选择 1 到 2 个不重复的系列（初始）---
-            const seriesCount = Math.floor(Math.random() * 2) + 1; // 1 或 2
+            const seriesCount = Math.floor(Math.random() * 2) + 1;
             const shuffledNames = [...SERIES_NAMES];
             for (let i = shuffledNames.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -770,7 +741,6 @@
             }
             let selectedSeriesNames = shuffledNames.slice(0, seriesCount);
 
-            // --- 根据文案长度动态决定表情包数量范围 ---
             let minCount = 4;
             let maxCount = 15;
             if (commentLength < 5) {
@@ -779,14 +749,11 @@
                 minCount = 8;
             }
 
-            // 计算当前选中系列的元素总数
             let totalAvailable = selectedSeriesNames.reduce((sum, name) => sum + SERIES[name].length, 0);
 
-            // 如果总数不够所需的最小数量，则不断添加新的不重复系列直到总数达到 minCount
             while (totalAvailable < minCount) {
-                // 从剩余未选中的系列中随机选一个
                 const remaining = SERIES_NAMES.filter(name => !selectedSeriesNames.includes(name));
-                if (remaining.length === 0) break; // 没有更多系列了
+                if (remaining.length === 0) break;
                 const newSeries = remaining[Math.floor(Math.random() * remaining.length)];
                 selectedSeriesNames.push(newSeries);
                 totalAvailable += SERIES[newSeries].length;
@@ -795,36 +762,30 @@
 
             console.log(`🎨 最终选择系列个数: ${selectedSeriesNames.length}, 系列: ${selectedSeriesNames.join(', ')}`);
 
-            // 合并选中系列的元素
             let combinedElements = [];
             for (const name of selectedSeriesNames) {
                 combinedElements = combinedElements.concat(SERIES[name]);
             }
             console.log(`📦 合并后元素总数: ${combinedElements.length}`);
 
-            // 调整 maxCount 不超过合并后元素总数，并确保 minCount <= maxCount
             maxCount = Math.min(maxCount, combinedElements.length);
             minCount = Math.min(minCount, maxCount);
 
-            const tailCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount; // 动态范围
+            const tailCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
 
-            // 从合并的元素中随机抽取 tailCount 个不重复的元素（打乱后取前N个）
             const shuffled = [...combinedElements];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
             const selected = shuffled.slice(0, tailCount);
-            // 再次打乱选中的子集，增加随机性
             for (let i = selected.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [selected[i], selected[j]] = [selected[j], selected[i]];
             }
 
-            // 智能分布表情包
             const { startPart, middleMap, endPart } = distributeElements(selected, randomComment);
 
-            // 构建最终评论
             let finalComment = startPart;
             for (let i = 0; i < randomComment.length; i++) {
                 finalComment += randomComment[i];
@@ -855,6 +816,15 @@
             publishBtn.click();
             statusDiv.innerText = `✅ 发送成功: ${finalComment.substring(0, 15)}...`;
             console.log('✅ 评论已发送');
+
+            // 删除已发送的文案
+            texts.splice(selectedIndex, 1);
+            const newText = texts.join('\n');
+            textareaInput.value = newText;
+            GM_setValue(STORAGE_KEY_TEXT, newText);
+            updateCount(); // 更新计数
+            console.log(`🗑️ 已删除文案，剩余 ${texts.length} 条`);
+
             await delay(2000);
             return true;
 
@@ -935,42 +905,65 @@
     function createUI() {
         panel = document.createElement('div');
         panel.id = 'bili-auto-comment-panel-v15';
+
+        // 检测深色模式
+        const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        // 根据模式设置颜色变量
+        const bgColor = isDarkMode ? '#2d2d2d' : 'white';
+        const textColor = isDarkMode ? '#e0e0e0' : '#222';
+        const borderColor = isDarkMode ? '#555' : '#e5e9ef';
+        const inputBgColor = isDarkMode ? '#3c3c3c' : 'white';
+        const inputTextColor = isDarkMode ? '#fff' : '#222';
+        const buttonBg = isDarkMode ? '#3c3c3c' : '#f4f5f7';
+        const buttonText = isDarkMode ? '#e0e0e0' : '#222';
+        const primaryButtonBg = isDarkMode ? '#0077be' : '#00a1d6';
+        const primaryButtonText = 'white';
+        const statusBg = isDarkMode ? '#3c3c3c' : '#f4f5f7';
+        const statusText = isDarkMode ? '#b0b0b0' : '#6d757a';
+        const countColor = isDarkMode ? '#ffa500' : '#00a1d6';
+
         panel.style.cssText = `
             position: fixed;
             top: 100px;
             right: 20px;
             width: 280px;
-            background: white;
-            border: 1px solid #e5e9ef;
+            background: ${bgColor};
+            border: 1px solid ${borderColor};
             border-radius: 12px;
             padding: 16px;
             z-index: 99999;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             font-family: 'Microsoft YaHei', sans-serif;
             font-size: 14px;
+            color: ${textColor};
             border-left: 4px solid #00a1d6;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
         `;
 
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v8.1 (系列补齐·海量表情)</h3>
+                <h3 style="margin:0; font-size: 16px; color: #00a1d6;">📝 B站自动评论 v8.3</h3>
                 <span style="cursor:pointer; font-size:18px; color:#99a2aa;" id="close-panel-v15">✕</span>
             </div>
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <label style="display:block; font-weight: bold;">📋 评论文案（一行一个）</label>
+                <span id="comment-count" style="color: ${countColor}; font-weight: bold;">剩余 0 条</span>
+            </div>
             <div style="margin-bottom: 12px;">
-                <label style="display:block; margin-bottom: 4px;">📋 评论文案（一行一个）</label>
-                <textarea id="comment-texts-v15" rows="4" style="width:100%; border:1px solid #e5e9ef; border-radius:6px; padding:8px; font-size:13px;">${DEFAULT_TEXTS}</textarea>
+                <textarea id="comment-texts-v15" rows="4" style="width:100%; box-sizing:border-box; border:1px solid ${borderColor}; border-radius:6px; padding:8px; font-size:13px; resize:vertical; background: ${inputBgColor}; color: ${inputTextColor};">${DEFAULT_TEXTS}</textarea>
             </div>
             <div style="margin-bottom: 16px; display: flex; align-items: center;">
-                <label style="margin-right: 8px;">⏱️ 间隔</label>
-                <input type="number" id="comment-interval-v15" min="10" value="60" style="width:70px; padding:4px; border:1px solid #e5e9ef; border-radius:4px;">
-                <span>秒</span>
+                <label style="font-weight: bold; margin-right: 8px;">⏱️ 间隔</label>
+                <input type="number" id="comment-interval-v15" min="10" value="60" style="width:70px; padding:4px; border:1px solid ${borderColor}; border-radius:4px; background: ${inputBgColor}; color: ${inputTextColor};">
+                <span style="margin-left:4px;">秒</span>
             </div>
             <div style="display: flex; gap: 6px; margin-bottom: 12px;">
-                <button id="start-auto-v15" style="flex:2; background:#00a1d6; color:white; border:none; border-radius:20px; padding:8px;">▶ 开始自动</button>
-                <button id="stop-auto-v15" style="flex:1; background:#f4f5f7; border:none; border-radius:20px; padding:8px;" disabled>⏹️ 停止</button>
-                <button id="send-now-v15" style="flex:1; background:#e5e9ef; border:none; border-radius:20px; padding:8px;">✍️ 发一次</button>
+                <button id="start-auto-v15" style="flex:2; background:${primaryButtonBg}; color:${primaryButtonText}; border:none; border-radius:20px; padding:8px; cursor:pointer; font-weight:bold;">▶ 开始自动</button>
+                <button id="stop-auto-v15" style="flex:1; background:${buttonBg}; color:${buttonText}; border:none; border-radius:20px; padding:8px; cursor:pointer; font-weight:bold;" disabled>⏹️ 停止</button>
+                <button id="send-now-v15" style="flex:1; background:${buttonBg}; color:${buttonText}; border:none; border-radius:20px; padding:8px; cursor:pointer;">✍️ 发一次</button>
             </div>
-            <div id="status-message-v15" style="background:#f4f5f7; border-radius:16px; padding:8px 12px; text-align:center;">🟢 就绪</div>
+            <div id="status-message-v15" style="background:${statusBg}; border-radius:16px; padding:8px 12px; font-size:13px; color:${statusText}; text-align:center;">🟢 就绪</div>
         `;
 
         document.body.appendChild(panel);
@@ -980,6 +973,7 @@
         startBtn = document.getElementById('start-auto-v15');
         stopBtn = document.getElementById('stop-auto-v15');
         statusDiv = document.getElementById('status-message-v15');
+        countSpan = document.getElementById('comment-count');
         const closeBtn = document.getElementById('close-panel-v15');
         const manualBtn = document.getElementById('send-now-v15');
 
@@ -987,6 +981,7 @@
         const savedInterval = GM_getValue(STORAGE_KEY_INTERVAL, 60);
         textareaInput.value = savedTexts;
         intervalInput.value = savedInterval;
+        updateCount(); // 初始化计数
 
         startBtn.addEventListener('click', start);
         stopBtn.addEventListener('click', stop);
@@ -996,6 +991,15 @@
             panel.style.display = 'none';
         });
 
+        // 监听深色模式变化，动态更新样式
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleColorSchemeChange = (e) => {
+            // 简单起见，刷新页面让样式重新应用，或者可以重新创建面板，但为了简单，我们刷新页面
+            location.reload();
+        };
+        mediaQuery.addEventListener('change', handleColorSchemeChange);
+
+        // 可拖动
         let isDragging = false, offsetX, offsetY;
         panel.addEventListener('mousedown', (e) => {
             if (e.target.tagName === 'H3' || e.target === panel) {
