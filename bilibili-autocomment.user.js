@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         B站自动评论 v8.8 精简版
+// @name         B站自动评论 v8.9 精简版
 // @namespace    https://github.com/GSJNZH/Bilibili-Auto-Comment-Tampermonkey-Script/
-// @version      8.8
+// @version      8.9
 // @description  远程表情包，备用仅aveMujica/mygo/pigeon，间隔随机±15s，后台运行
 // @author       GSJNZH
 // @match        www.bilibili.com/video/BV1fy4y1L7Rq/*
@@ -16,7 +16,7 @@
 
 (async function() {
   'use strict';
-  const EMOTE_URL = 'https://p1.ru.cloudns.nz/Project/Bilibili-Auto-Comment-Tampermonkey-Script/bilibili-emotes.json';
+  const EMOTE_URL = 'https://p1-cdn.edgeone.dev/Project/Bilibili-Auto-Comment-Tampermonkey-Script/bilibili-emotes.json';
   const FALLBACK_SERIES = {
     aveMujica: ['[Ave Mujica_挺好]','[Ave Mujica_再等一下]','[Ave Mujica_震惊]','[Ave Mujica_比叉叉]','[Ave Mujica_开心]','[Ave Mujica_哼]','[Ave Mujica_怎么突然]','[Ave Mujica_诶]','[Ave Mujica_一次买够]','[Ave Mujica_难道？]','[Ave Mujica_睡觉]','[Ave Mujica_我要告你]','[Ave Mujica_赌气]','[Ave Mujica_记得微笑]','[Ave Mujica_委屈]','[Ave Mujica_不行]','[Ave Mujica_美味]','[Ave Mujica_我有话说]','[Ave Mujica_害怕]','[Ave Mujica_愉快]'],
     mygo: ['[Mygo表情包_害羞]','[Mygo表情包_生气]','[Mygo表情包_发送消息]','[Mygo表情包_抹茶芭菲]','[Mygo表情包_请点单]','[Mygo表情包_不要吵架]','[Mygo表情包_Love]','[Mygo表情包_让我看看]','[Mygo表情包_溜了溜了]','[Mygo表情包_那我呢？]','[Mygo表情包_创作中]','[Mygo表情包_探头]','[Mygo表情包_为什么！]','[Mygo表情包_刚睡醒]','[Mygo表情包_哈？]','[Mygo表情包_忧郁]','[Mygo表情包_不会吧？]','[Mygo表情包_大哭]','[Mygo表情包_有趣的女人]','[Mygo表情包_Block!]'],
